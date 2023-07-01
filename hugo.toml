@@ -3,7 +3,6 @@ languageCode = 'en-us'
 title = 'Simon Tulling'
 theme = 'hugo-tania'
 paginate = 6
-canonifyURLs = true
 
 # disqusShortname = "https-hugo-tania-netlify-app"
 
