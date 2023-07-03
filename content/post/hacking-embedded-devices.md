@@ -50,14 +50,117 @@ Based on some poking and interfacing with some of the ports, I got none the wise
 ## Looking for more information
 Well, that brought us nowhere, so let's look for some more information. The machine has a model number, so let's look that up. The first result is the [Cassida Pro](https://cassidapro.com/) website, which is the company that makes the machine. 
 ### Crawling the website
+My first instinct was to look for a support page, which may have service manuals, firmware updates or other useful information. Unfortunately, I couldn't find something by just browsing around so I used gobuster to crawl the website. I used the following command:
+
+```bash
+gobuster dir -w /usr/share/wordlists/seclists/Discovery/Web-Content/common.txt -u https://cassidapro.com/
+```
+
+![Gobuster output](cassida/bust_results.png)
+
+`https://cassidapro.com/partner/` looks promising, so lets check it out.
+
+![Partner page](cassida/too_easy.png)
+
+Well, there we go, a page with a bunch of links to manuals and firmware updates. Let's just click on down...
+
+![Get thwarted nerd](cassida/too_easy2.png)
+
+Darn, it seemed too easy anyway. I'm glad to see _Mike Bodine_ is on top of his game, completely thwarting any attempts to get some firmware updates.
 
 #### "The Spanish Strategy"™
 
+However... You may have also recognized another url in the gobuster output, namely `https://cassidapro.com/socio/`. This is the Spanish version of the website, and it seems that the Spanish version of the website is not as well maintained as the English version. So let's check out the partner page there. 
+
+![Spanish partner page](cassida/espanol1.png)
+
+![Spanish partner page 2](cassida/espanol2.png)
+
+__Bingo!__ Let's download the firmware update and see what we can do with it. We are greeted with a file called `1_tbmupdate_cassida_usd_200630.tbk`, I have no idea what a `.tbk` file is, but it's probably just a zip file with a different extension[^20]. So let's just rename it to `.zip` and open it with 7zip.
+
+![It's encrypted](cassida/ohno.png)
+
+Well, that's a bummer. It seems that the firmware update is encrypted. Let's see if we can decrypt it.
+
+[^20]: Usually nobody wants to bother with making their own file format, so they just use a standard one and change the extension. Microsoft for example does this with their `.docx` and `.xlsx` files.
+
 ## Decrypt the firmware update
+
+To decrypt the zip file I looked at 2 main options:
+- Brute forcing the password
+- Exploiting weak zip encryption
 
 ### Brute forcing
 
+The first option is to brute force the password. This is a very simple approach, we just try a bunch of passwords until we find the right one. I opted to use hashcat for this, since it's a very powerful tool for password cracking (although john probably works just as well). I used the following workflow[^21]
+
+```
+$ cp 1_tbmupdate_cassida_usd_200630.tbk update.zip
+$ zip2john update.zip > update.hash
+$ cat update.hash
+update.zip:$pkzip2$3*2*1*0*8*24*33fb*700e*82fbc48cd8fcbe5885e734727783acf77c9c3d96e165577a5f22f67294e18a1b6b6a4391*1*0*8*24*ee39*7009*2a96ee640e56ecaccf86814fcab6573d4183016e5a042bb48615092304c8369131a42519*2*0*21*15*6b5dbfbd*9d119e7*70*0*21*6b5d*7d44*7691f6a82ce08dc64bd85e7dc7a48e6ed281371f2f207b50322ff94ff90184f66c*$/pkzip2$::update.zip:update/rc.local, update/callemergency...
+```
+
+To use it in hashcat we can remove a bunch of the information and just keep the hash:
+
+```
+$ cat only_hash.hash
+$pkzip2$3*2*1*0*8*24*33fb*700e*82fbc48cd8fcbe5885e734727783acf77c9c3d96e165577a5f22f67294e18a1b6b6a4391*1*0*8*24*ee39*7009*2a96ee640e56ecaccf86814fcab6573d4183016e5a042bb48615092304c8369131a42519*2*0*21*15*6b5dbfbd*9d119e7*70*0*21*6b5d*7d44*7691f6a82ce08dc64bd85e7dc7a48e6ed281371f2f207b50322ff94ff90184f66c*$/pkzip2$
+```
+
+There are multiple hash modes for zip files, but the one we want is `17225`.
+
+```
+17200 | PKZIP (Compressed)                               | Archives
+17220 | PKZIP (Compressed Multi-File)                    | Archives
+17225 | PKZIP (Mixed Multi-File)                         | Archives
+17230 | PKZIP (Mixed Multi-File Checksum-Only)           | Archives
+17210 | PKZIP (Uncompressed)                             | Archives
+20500 | PKZIP Master Key                                 | Archives
+20510 | PKZIP Master Key (6 byte optimization)           | Archives
+```
+
+Then we just run hashcat with a simple bruteforce attack, as we don't know anything about the format of the password. So we just try all possible combinations from 1 to 10 printable ascii characters.
+
+```
+$ hashcat -m 17225 only_hash.hash -a 3 ?a?a?a?a?a?a?a?a?a?a ‐‐increment
+```
+
+After a couple of days, I only managed to get up to 8 characters[^22]. Not knowing anything about the length of the password, I decided to give up on this approach.
+
+
+[^21]: Adapted from [https://ctftime.org/writeup/28193](https://ctftime.org/writeup/28193)
+[^22]: Maybe consider updating password policies to go beyond 8 characters...
+
 ### Exploiting weak zip encryption
+
+Looking back at the image we see that the files are encrypted with ZipCrypto which is a legacy cryptography algorithm vulnerable to [a partial known plaintext attack](https://link.springer.com/chapter/10.1007/3-540-60590-8_12), and a tool called [bkcrack](https://github.com/kimci86/bkcrack) to exploit this[^23]. The tool requires 12 bytes of known plaintext, which we may be able to find in the firmware update. 
+
+Unfortunately, none of the files in there were findable on google, so we don't have a complete plaintext to use for the decryption script. However we can guess that the first 12 bytes of the `rc.local` file are likely `#!/bin/sh\n`:
+|1|2|3|4|5|6|7|8|9|10|11|12|
+|-|-|-|-|-|-|-|-|-|-|-|-|
+|`#`|`!`|`/`|`b`|`i`|`n`|`/`|`s`|`h`|`\n`|`?`|`?`|
+
+Which leaves us with 2 character to bruteforce but we can guess that it very likely might be `#` and `\n` or ` `. However, I got stopped right in my tracks when I looked back at the 7zip window and saw that the `rc.local` file wasn't just encrypted, it was also compressed with the DEFLATE algorithm.
+
+So the "plaintext" that got encrypted isn't actually the plaintext, but the compressed plaintext. I don't know how deflate works but since the initial approach already relied on guessing 2 bytes out of 12, trying to guess it after it's been compressed is probably not going to work. So I gave up on this approach as well.
+
+[^23]: Or [pkcrack](https://github.com/keyunluo/pkcrack) which does the same thing
+
+#### Another stupid approach
+There was another interesting file in the zip file: `currency.list`. This file is 21 bytes long (so at least the 12 we need) and probably contains a list of currencies. Additionally it has an CRC32 checksum, so once we found a plaintext that matches the checksum we can be reasonably sure that we found the right plaintext. Bruteforcing 21 characters is a bit too much, but we can make reasonable assumptions about the format of the file.
+
+Perhaps it's a list of 3 letter currency codes? For instance:
+```
+[EUR,USD,GBP,JPY,RBL]
+```
+These all lined up to the 21 bytes we need, so I made a dictionary of all the 3 letter currency codes and generated CRC32 checksums for all of them and looked for a match. And we got a match! Wait actually we got a couple... too many actually.
+
+Through the pigeonhole principle we can see that there are multiple 3 letter strings that map to the same CRC32 checksum. There are only 2^32 possible CRC32 checksums, but there are 180^5 possible lists of 3 letter currency codes. Which means we expect roughly...
+
+![matches](cassida/calc.png)
+
+... a lot of matches, and this is just for a guess that the file is a list of 3 letter currency codes in that format, maybe it uses square brackets, or spaces instead of commas. Not even mentioning the fact that after a match we need to brute force different settings for the deflate algorithm. And then use the time-intensive decryption script to see if it's the right one. So I gave up on this approach as well.
 
 ## Finding the key
 Well, the firmware has to be decrypted somewhere. Unfortunately that place is in the machine itself, so we have to find a way to read it out. Let's start by looking at the board again and looking for some interesting chips.
@@ -201,9 +304,11 @@ So now we save the modified firmware file and zip it back up together using the 
 ![Shell](cassida/gotem.PNG)
 
 
-
 [^14]: [https://linuxhint.com/use-etc-rc-local-boot/](https://linuxhint.com/use-etc-rc-local-boot/)
 [^15]: I initally tested netcat reverse shells as well, but it was dumb to assume that netcat would be installed on the device. So a shell that uses the built-in `sh` shell makes more sense.
+
+> Specs of the machine:
+
 ## Conclusion
 
 ## Summary
