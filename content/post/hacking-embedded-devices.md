@@ -156,12 +156,15 @@ Perhaps it's a list of 3 letter currency codes? For instance:
 ```
 These all lined up to the 21 bytes we need, so I made a dictionary of all the 3 letter currency codes and generated CRC32 checksums for all of them and looked for a match. And we got a match! Wait actually we got a couple... too many actually.
 
-Through the pigeonhole principle we can see that there are multiple 3 letter strings that map to the same CRC32 checksum. There are only 2^32 possible CRC32 checksums, but there are 180^5 possible lists of 3 letter currency codes. Which means we expect roughly...
+Through the pigeonhole principle we can see that there are multiple 3 letter strings that map to the same CRC32 checksum. There are only 2^32 possible CRC32 checksums, but there are 180^5[^24] possible lists of 3 letter currency codes. Which means we expect roughly...
 
 ![matches](cassida/calc.png)
 
-... a lot of matches, and this is just for a guess that the file is a list of 3 letter currency codes in that format, maybe it uses square brackets, or spaces instead of commas. Not even mentioning the fact that after a match we need to brute force different settings for the deflate algorithm. And then use the time-intensive decryption script to see if it's the right one. So I gave up on this approach as well.
+... a bit too many matches, and this is just for a guess that the file is a list of 3 letter currency codes in that exact format, maybe it uses square brackets, or spaces instead of commas, maybe a different capitalization even. Not even mentioning the fact that after a match we need to brute force different settings for the deflate algorithm. And then use the time-intensive decryption script to see if it's the right one. So I gave up on this approach as well.
 
+(Fun fact, the actual file is just some ascii numbers with some whitespace sprinkled in, so it's not even a list of currencies)
+
+[^24]: Based on [this list.](https://www.eurochange.co.uk/travel/tips/world-currency-abbreviations-symbols-and-codes-travel-money)
 ## Finding the key
 Well, the firmware has to be decrypted somewhere. Unfortunately that place is in the machine itself, so we have to find a way to read it out. Let's start by looking at the board again and looking for some interesting chips.
 
@@ -171,10 +174,10 @@ Flipping over the board reveals a bunch of additional chips, and we can see a fa
 
 [^5]: ![25Q256JVFQ](cassida/zoomedin.jpg)
 
-As I am a terrible solderer, I wanted to avoid desoldering the chip at all costs. So looked into a way to read it out without removing it from the board. Looking at the flash chip, we can see that it is attached to the board with reasonably large pins[^6], which means that we can probably get away with just connecting some wires to it and reading it out. To connect the wires I used some "IC test hooks"[^7].
+As I am a terrible solderer, I wanted to avoid desoldering the chip at all costs. So looked into a way to read it out without removing it from the board. Looking at the flash chip, we can see that it is attached to the board with reasonably large pins[^6], which means that we can probably get away with just connecting some wires to it and reading it out. To connect the wires I used an IC test clip, which made the task of attaching wires very simple[^7].
 
 [^6]: Compared to the other chips on the board, they're still tiny and fiddly to work with
-[^7]: ![IC test hooks](cassida/probe.webp)
+[^7]: ![IC clip](cassida/clip.webp)
 
 ### Talking to the chip
 Since I have a SPI flash reader, I assumed I could just connect the power and data pins to the chip and read it out. According to the [datasheet](https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/?__locale%253Den%2526partNo%253DW25Q256JV) of the chip, the specs and pinout are as follows:
