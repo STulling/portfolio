@@ -1,0 +1,123 @@
+.side {
+    width: 300px;
+    margin: 0 auto;
+
+    p {
+      margin: 0;
+    }
+}
+
+.side-right {
+    float: right;
+    clear: right;
+    margin-right: calc(-300px - 2em);
+    background-color: var(--background);
+
+    p {
+        font-size: .9rem;
+    }
+}
+
+.side-left {
+  width: 350px;
+  float: left;
+  clear: left;
+  margin-left: calc(-350px - 2em);
+  background-color: var(--background);
+
+  a {
+      font-size: .95rem;
+  }
+
+  li li {
+    color: var(--light-font-color);
+    margin-left: 1em;
+  }
+
+  li li:last-child::before {
+      content: "└";
+  }
+
+  li li::before {
+    content: "├";
+    font-size: .95rem;
+    display: inline-block;
+    width: 1em;
+    margin-left: -1em;
+  }
+}
+
+.sticky {
+    position: sticky;
+    top: 1rem;
+    z-index: 1;
+    background-color: var(--background);
+    padding: 1em;
+}
+
+.footnotes {
+  ol li p {
+    margin: 0;
+  }
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+  }
+}
+
+.footnote-ref {
+  box-shadow: none !important;
+}
+
+.footnote-backref {
+  box-shadow: none !important;
+}
+
+.note-ref {
+    cursor: pointer;
+    border: none;
+    box-shadow: none !important;
+
+    &:hover {
+        box-shadow: none;
+        border: none;
+    }
+}
+
+.bg-number {
+    background: var(--light-background);
+    font-size: .9rem;
+    color: var(--font-color);
+    text-decoration: none;
+    padding: 1px 5px;
+    border-radius: 5px;
+}
+
+@media (max-width: 1280px) {
+    .side {
+        width: 100%;
+        padding: 0 2em;
+    }
+
+    .side-right {
+        float: none;
+        clear: both;
+        margin: 1em auto;
+        background: none;
+    }
+
+    .side-left {
+      display: none;
+  }
+}
+
+@media (min-width: 1280px) {
+
+    .note-ref:hover ~ .side {
+        display: inline-block;
+        position: absolute;
+        margin-left: 1rem;
+        padding: .5rem;
+        box-sizing: content-box;
+    }
+}
