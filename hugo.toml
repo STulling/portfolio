@@ -8,7 +8,7 @@ paginate = 6
 
 [params]
   # Emoji will show before the blog title on site navbar.
-  titleEmoji  = ""
+  titleEmoji  = "🦆"
 
   # Logo will show before the blog title on site navbar.
   titleLogo = ""
@@ -17,9 +17,9 @@ paginate = 6
   # Default to true
   enableFootnotes = true
 
-  siteName = "Hugo Tania is Amazing"
-  siteDesc = "Hugo is Absurdly Fast!"
-  author = "Hugo Tania"
+  siteName = "Simon Tulling Portfolio"
+  siteDesc = "Some random hacking stuff might end up on here"
+  author = "Simon Tulling"
 
   [params.colorScheme]
     # Enable toggle colorScheme
