@@ -1,0 +1,184 @@
+​
+<style>
+    #doublecolumnintro {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+    #whoami {
+        flex: 1;
+    }
+    #profilepic {
+        text-align: center;
+        align-self: flex-start;
+        width: 30%;
+    }
+    #profilepic img {
+        border-radius: 50%;
+        width: 200px;
+        height: 200px;
+    }
+    @media screen and (max-width: 600px){
+        #doublecolumnintro {
+            display: flex;
+            flex-direction: column-reverse;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: -40px;
+        }
+        #profilepic {
+            text-align: center;
+            align-self: flex-start;
+            margin-left: 0px;
+            display: flex;
+            flex-direction: row;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        #profilepic img {
+            border-radius: 50%;
+            width: 100px;
+            height: 100px;
+        }
+        #profilepic .stuff {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: -webkit-fill-available;
+        }
+    }
+    .my a{
+        margin-right: 0;
+        color: var(--link-color);
+        font-style: italic;
+        font-weight: 500;
+    }
+    .bio-social {
+        margin-top: 10px;    
+    }
+    .bio-social a {
+        margin-right: 10px;
+        color: var(--link-color);
+        font-style: italic;
+    }
+    #profilepic .socialicon {
+        width: 20px;
+        height: 20px;
+        margin-right: 5px;
+        vertical-align: text-bottom;
+        border-radius: 0;
+    }
+    .socialicon,#github {
+        content: url('/github-mark.svg');
+    }
+    .socialicon,#linkedin {
+        content: url('/linkedin.svg');
+    }
+    [data-user-color-scheme=dark] {
+        .socialicon,#github {
+            filter: invert(1);
+        }
+        .socialicon,#linkedin {
+            filter: invert(1);
+        }
+    }
+
+    .typewriter {
+        width: max-content;
+        font-family: monospace;
+    }
+
+    .typewriter h1.dotype {
+    overflow: hidden; /* Ensures the content is not revealed until the animation */
+    border-right: .15em solid orange; /* The typwriter cursor */
+    white-space: nowrap; /* Keeps the content on a single line */
+    left: 0;
+    letter-spacing: .15em; /* Adjust as needed */
+    animation: 
+        typing 2.5s steps(6, end),
+        blink-caret .75s step-end infinite;
+    }
+    
+
+    /* The typing effect */
+    @keyframes typing {
+    from { width: 33.333333333333333333% }
+    to { width: 100%}
+    }
+
+    /* The typewriter cursor effect */
+    @keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: orange; }
+    }
+
+</style>
+<div id = "doublecolumnintro">
+    <div id="whoami">
+        <div class="typewriter"><h1 class="dotype">$> whoami</h1></div>
+        <p> I am a security analyst with a passion for learning and teaching. I am currently working at <a href="https://www.corbion.com/">Corbion</a> mostly focussing on internal pentesting and improving our defenses. </p>
+        <p> I am proud to be a founding member of the <a href="https://ctftime.org/team/134822">TU Delft Hacking Team</a> resulting in a first place finish on the national leaderboard in 2022. I have helped organize our own hacking competitions with this team and gave presentations about various topics to help other members.</p>
+        <p> I have qualified for the Dutch team at the 2023 <a href="https://ecsc.eu/">European Cybersecurity Challenge</a> which landed us at fourth place in the international competition, the highest placing of the dutch team so far.</p>
+    </div>
+    <div id="profilepic">
+        <img src="/me.jpeg" alt="Profile Picture">
+        <br>
+        <div class="stuff">
+            <!-- LinkedIn link -->
+            <div class="bio-social">
+                <a href="https://www.linkedin.com/in/simon-tulling-177b53184" target="_blank" rel="noreferrer" title="LinkedIn"
+                    aria-label="LinkedIn">
+                    <img id="linkedin" class="socialicon"> Simon Tulling
+                </a>
+            </div>
+            <!-- Github link -->
+            <div class="bio-social">
+                <a href="https://github.com/STulling" target="_blank" rel="noreferrer" title="Github"
+                    aria-label="Github">
+                    <img id="github" class="socialicon"> STulling
+                </a>
+            </div>
+        </div>
+    </div>  
+</div>
+<style>
+    .iconandtext {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .thetext {
+        flex: 1;
+    }
+    .theicon {
+        text-align: center;
+        align-self: flex-start;
+        align-self: center;
+        width: 30%;
+    }
+    .theicon img {
+        width: 100%;
+        height: 150px;
+    }
+</style>
+<div style="margin-top: 50px;">
+    <div class="iconandtext">
+        <div class="theicon">
+            <img src="/GIAC-Cert_GCFA.svg" alt="GCFA logo">
+        </div>
+        <div class="thetext">
+            <h3> Certifications </h3>
+            <p> I am currently finishing my masters degree in Computer Science at TU Delft, specializing in Artificial Intelligence. I have also earned my bachelors degree at TU Delft for Computer science. </p>
+            <p> I have so far earned the <a href="https://www.giac.org/certifications/certified-forensic-analyst-gcfa/">GCFA certification</a> for Forensic Analysis, and am planning on attempting an OSCP certification in the near future. </p>
+        </div>
+    </div>
+        <h3> Pentesting experience </h3>
+    <p> Working for Corbion allows me to help with protecting a reasonable mature Active Directory environment, which has lead me to become familiar with various common pentesting and recon tools as well as creating some of my own. </p>
+    <p> Apart from internal pentests, I have assisted a pentest and a red teaming exercise as part of the blue team and replicated critical steps in the process to see whether the 'solutions' (or our interpretations of them) actually worked. </p>
+    <h3> Other fun stuff </h3>
+    <p> I have supervised at <a href="https://www.makerspacedelft.nl/">Makerspace Delft</a> for almost 2 years working on various projects and helping out others. Projects include a lasercut balcony windmill, apple press for cider making and retro console/game modifications. In my spare time I also like to take stuff apart and see how they work, see the writeup of the Cassida Zeus below for more info.</p>
+    </div>
+</div>

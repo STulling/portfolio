@@ -269,6 +269,8 @@ And there we are, the password falls right into our lap. The `-P` argument to `u
 
 [^13]: For obvious reasons I'm not going to post the password here.
 
+> Note: The unzip command actually still works with an unencrypted file even if a password is provided. So in theory you could skip the whole password finding step and just zip a blind `rc.local` file without a password and hope for the best. However, I wanted to do it the proper way.
+
 ## Making a backdoor
 
 Now that we have the password, we can modify our own firmware update and use it to patch the machine, so that we can get a shell on it. We can take a look at the files and look for a good place to put our backdoor. 
