@@ -1,4 +1,4 @@
-baseURL = 'http://example.org/'
+baseURL = 'http://tulling.dev/'
 languageCode = 'en-us'
 title = 'Simon Tulling'
 # theme = 'hugo-tania'
@@ -58,6 +58,9 @@ paginate = 6
 [[menu.header]]
   name = "Articles"
   url = "/articles/"
+[[menu.header]]
+  name = "Public Disclosures"
+  url = "/disclosures/"
 [[menu.footer]]
     name = "RSS"
     url = "/index.xml"

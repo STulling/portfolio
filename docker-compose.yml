@@ -1,0 +1,23 @@
+version: "3"
+
+networks:
+  web:
+    external: true
+
+services:
+  portfolio:
+    image: klakegg/hugo:ext-alpine
+    command:
+      - "--config=hugo.toml"
+      - "server"
+      - "--bind=0.0.0.0"
+    volumes:
+      - ".:/src"
+    labels:
+      - traefik.http.routers.blog.rule=Host(`tulling.dev`)
+      - traefik.http.routers.blog.tls=true
+      - traefik.http.routers.blog.tls.certresolver=lets-encrypt
+      - traefik.http.routers.blog.entrypoints=websecure
+      - traefik.port=1313
+    networks:
+      - web

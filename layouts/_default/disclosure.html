@@ -1,0 +1,104 @@
+{{ define "main" }}
+<style>
+    .article-header {
+        display: inline-flex;
+    }
+    .score {
+        font-family: 'Roboto', sans-serif;
+        display: flex;
+        align-items: center;
+        width: 10em;
+        float: right;
+        border-radius: 5px;
+        border-style: solid;
+        flex-direction: column;
+        &.Critical {
+            background-color: #ffd9d9;
+            border-color: #ff0000;
+            color: #000000;
+            .scorelabel {
+                background-color: #ff8b8b;
+                border-top-color: #ff0000;
+            }
+        }
+    }
+
+    .score .scorenum {
+        font-size: 2em;
+        font-weight: bold;
+        padding: 0.5em;
+    }
+
+    .score .scorelabel {
+        font-size: 1em;
+        padding: 0.5em;
+        width: 100%;
+        text-align: center;
+        border-top: #000000 1px solid;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container disclosure-page">
+    <article class="disclosure-article">
+        <header class="article-header">
+            <div class="title">
+                <h1>{{ .Title }}</h1>
+                <div class="meta">
+                    <span><strong>Vendor:</strong> {{ .Params.vendor }}</span> |
+                    <span><strong>Product:</strong> {{ .Params.vulnerable }}</span>
+                </div>
+            </div>
+            <div class="score {{ .Params.severity }}">
+                <span class="scorenum">{{ .Params.severity_score }}</span>
+                <span class="scorelabel">{{ .Params.severity }}</span>
+            </div>
+        </header>
+
+        <section class="vulnerability-details">
+            <h2>Vulnerability Details</h2>
+            <p><strong>Description:</strong> {{ .Params.description }}</p>
+            <p><strong>Weakness:</strong> {{ .Params.cwe }}</p>
+        </section>
+
+        <section class="advisory">
+            <h2>Advisory</h2>
+            <p>{{ .Params.advisory }}</p>
+        </section>
+
+        <section class="metrics">
+            <h2>Metrics</h2>
+            <p><strong>CVSS v3.1 Score:</strong> {{ .Params.severity_score }}</p>
+            <ul>
+                <li><strong>Access Vector (AV):</strong> {{ .Params.av }}</li>
+                <li><strong>Access Complexity (AC):</strong> {{ .Params.ac }}</li>
+                <li><strong>Privileges Required (PR):</strong> {{ .Params.pr }}</li>
+                <li><strong>User Interaction (UI):</strong> {{ .Params.ui }}</li>
+                <li><strong>Scope (S):</strong> {{ .Params.s }}</li>
+                <li><strong>Confidentiality (C):</strong> {{ .Params.c }}</li>
+                <li><strong>Integrity (I):</strong> {{ .Params.i }}</li>
+                <li><strong>Availability (A):</strong> {{ .Params.a }}</li>
+            </ul>
+            <p><strong>Vector:</strong> {{ .Params.cvss3 }}</p>
+        </section>
+
+        <section class="references">
+            <h2>References</h2>
+            <ul>
+                {{ range .Params.references }}
+                    <li><a href="{{ .link }}" target="_blank" rel="noopener">{{ .title }}</a></li>
+                {{ end }}
+            </ul>
+        </section>
+
+        <section class="timeline">
+            <h2>Timeline</h2>
+            <ul>
+                {{ range .Params.timeline }}
+                    <li><strong>{{ .date }}</strong>: {{ .note }}</li>
+                {{ end }}
+            </ul>
+        </section>
+    </article>
+</div>
+{{ end }}
